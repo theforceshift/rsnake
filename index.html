@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snake Eaten</title>
+    <title>p5.js Sketch</title>
     <style>
         body { margin: 0; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; }
     </style>
@@ -36,6 +36,13 @@ const DASH_ECHO_COUNT = 8;    // How many echoes to generate along the dash path
 let dashesUsed = 0;
 const DASH_SPEED_BOOST_THRESHOLD = 3; // Number of dashes before snake gets faster
 const SNAKE_SPEED_BOOST_MULTIPLIER = 1.5; // How much faster the snake gets (e.g., 1.5 for 1.5x speed)
+
+// NEW CONSTANT: Adjusts the snake's base speed relative to the player's speed.
+// 1.0 = same speed as player
+// > 1.0 = faster than player
+// < 1.0 = slower than player
+const SNAKE_BASE_SPEED_MULTIPLIER = 1.1; 
+
 let currentFramesPerSegment; // The actual frames per segment the snake currently uses
 let snakeBaseFramesPerSegment; // Stored initial value
 let snakeBoostedFramesPerSegment; // Stored boosted value
@@ -58,10 +65,10 @@ function setup() {
   createCanvas(windowWidth, windowHeight); // Fixed bug: ensuring canvas uses windowHeight
   textFont('Syne Mono'); // Set font to Syne Mono for all text (requires external loading)
 
-  // Pre-calculate snake speed values
-  snakeBaseFramesPerSegment = MOVEMENT_SPEED_FACTOR;
-  // Use floor to ensure integer for frameCount % operation
-  snakeBoostedFramesPerSegment = floor(MOVEMENT_SPEED_FACTOR / SNAKE_SPEED_BOOST_MULTIPLIER);
+  // Pre-calculate snake speed values based on new SNAKE_BASE_SPEED_MULTIPLIER
+  snakeBaseFramesPerSegment = floor(MOVEMENT_SPEED_FACTOR / SNAKE_BASE_SPEED_MULTIPLIER);
+  // Use floor to ensure integer for frameCount % operation, applied on top of base speed
+  snakeBoostedFramesPerSegment = floor(snakeBaseFramesPerSegment / SNAKE_SPEED_BOOST_MULTIPLIER);
 
   // No resetGame() here, as we start in 'startScreen' mode
 }
@@ -114,20 +121,22 @@ function draw() {
     drawPlayer();
     drawSnake();
   } else if (gameMode === 'win') {
+    // Consolidated win messages under "YOU SURVIVED!"
     if (gameResultReason === "snake_self_collision") {
-      displayMessage("YOU WIN!", "The snake tied itself in a knot!");
+      displayMessage("YOU SURVIVED!", "The snake tied itself in a knot!");
     } else if (gameResultReason === "snake_too_short") {
-      displayMessage("YOU WIN!", "The snake is too short to chase you anymore!");
+      displayMessage("YOU SURVIVED!", "The snake is too short to chase you anymore!");
+    } else if (gameResultReason === "snake_wall_crash") { // NEW: Snake crashing is a win
+      displayMessage("YOU SURVIVED!", "The snake crashed into the wall!");
     } else {
-      displayMessage("YOU WIN!", "Congratulations!"); // Fallback for any other win condition
+      displayMessage("YOU SURVIVED!", "Congratulations!"); // Fallback
     }
   } else if (gameMode === 'lose') {
+    // Dedicated lose message for being caught
     if (gameResultReason === "bait_caught") {
-      displayMessage("GAME OVER", "The snake caught you!");
-    } else if (gameResultReason === "snake_wall_crash") {
-      displayMessage("GAME OVER", "The snake crashed into the wall!");
+      displayMessage("YOU WERE CAUGHT!", "The snake caught you!");
     } else {
-      displayMessage("GAME OVER", "You crashed!"); // Fallback for any other lose condition
+      displayMessage("GAME OVER", "An unexpected error occurred!"); // Fallback for any other unexpected lose
     }
   }
 }
@@ -256,14 +265,14 @@ function checkCollisions() {
     }
   }
 
-  // 2. Snake with Walls - LOSE
+  // 2. Snake with Walls - WIN (You survived by making it crash!)
   if (head.x < 0 || head.x >= width || head.y < 0 || head.y >= height) {
-    gameMode = 'lose';
+    gameMode = 'win'; // <-- CHANGED TO WIN!
     gameResultReason = "snake_wall_crash";
     return; // Collision detected, stop checking
   }
 
-  // 3. Snake with Self - WIN
+  // 3. Snake with Self - WIN (You survived by making it crash!)
   // Starting from index 3 to prevent immediate collision with neck/shoulder segments during turns
   for (let i = 3; i < snakeSegments.length; i++) {
     let segmentRect = { x: snakeSegments[i].x, y: snakeSegments[i].y, w: segmentSize, h: segmentSize };
@@ -337,9 +346,9 @@ function displayStartScreen() {
   text("Arrow Keys or WASD to Move", width / 2, height / 2 - 20);
   text("Spacebar to Dash", width / 2, height / 2 + 30);
   text("Outrun the snake or make it crash!", width / 2, height / 2 + 80);
-  text("Press ANY KEY to start", width / 2, height / 2 + 130);
 
- 
+  textSize(32);
+  text("Press ANY KEY to start", width / 2, height / 2 + 130);
 }
 
 
